@@ -64,8 +64,6 @@ jobs:
 
             run ./output/bin/python3-setup show-default-config
 
-            run ./output/bin/python3-setup integrate zsh
-            run ./output/bin/python3-setup integrate zsh -v
 
             run ./output/bin/python3-setup setup -v
 

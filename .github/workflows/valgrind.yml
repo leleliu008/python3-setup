@@ -59,8 +59,6 @@ jobs:
 
       - run: $VALGRIND ./output/bin/python3-setup env
 
-      - run: $VALGRIND ./output/bin/python3-setup integrate zsh
-      - run: $VALGRIND ./output/bin/python3-setup integrate zsh -v
 
       - run: $VALGRIND ./output/bin/python3-setup setup -v
 

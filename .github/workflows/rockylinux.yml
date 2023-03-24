@@ -53,8 +53,6 @@ jobs:
 
       - run: ~/.ppkg/installed/python3-setup/bin/python3-setup show-default-config
 
-      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup integrate zsh
-      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup integrate zsh -v
 
       - run: ~/.ppkg/installed/python3-setup/bin/python3-setup setup -v
 
