@@ -1,0 +1,50 @@
+name: ArchLinux
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    container: archlinux
+
+    steps:
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm git cmake ninja gcc pkg-config curl openssl libarchive libyaml
+
+      - uses: actions/checkout@main
+
+      - run:  cmake --version
+      - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+      
+       #- run: ./output/bin/python3-setup upgrade-self

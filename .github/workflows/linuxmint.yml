@@ -1,0 +1,63 @@
+name: LinuxMint
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [19.3, 20.1]
+
+    container: linuxmintd/mint${{ matrix.tag }}-amd64
+
+    steps:
+      - run:  id
+      - run:  sudo apt -y update
+      - run:  sudo apt -y install curl xz-utils g++
+
+      - uses: actions/checkout@main
+
+      - name: install ppkg
+        run: |
+          curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          chmod a+x ppkg
+          ./ppkg setup
+
+      - run:  ./ppkg update
+      - run:  ./ppkg install python3-setup
+
+
+      - run:  echo "SSL_CERT_FILE=$HOME/.ppkg/core/etc/ssl/certs/cacert.pem" >> $GITHUB_ENV
+
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup --help
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup -h
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup --version
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup -V
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup sysinfo
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup env
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup show-default-config
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup integrate zsh
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup integrate zsh -v
+
+      - run: ~/.ppkg/installed/python3-setup/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ~/.ppkg/installed/python3-setup/bin/python3-setup upgrade-self

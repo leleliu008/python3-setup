@@ -1,0 +1,58 @@
+name: OpenBSD
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  test:
+    runs-on: macos-12
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.vagrant.d/boxes
+          key: vagrant-generic-openbsd-7
+          restore-keys: |
+            vagrant-generic-openbsd-7
+
+      - uses: leleliu008/github-actions-vagrant@v1
+        with:
+          mem: 2048
+          box: generic/openbsd7
+          run: |
+            run sudo pkg_add cmake ninja llvm pkgconf curl libarchive libyaml
+
+            run cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+            run cmake --build   build.d
+            run cmake --install build.d
+
+
+            run ./output/bin/python3-setup
+
+            run ./output/bin/python3-setup --help
+            run ./output/bin/python3-setup -h
+
+            run ./output/bin/python3-setup --version
+            run ./output/bin/python3-setup -V
+
+            run ./output/bin/python3-setup sysinfo
+
+            run ./output/bin/python3-setup env
+
+            run ./output/bin/python3-setup show-default-config
+
+            run ./output/bin/python3-setup integrate zsh
+            run ./output/bin/python3-setup integrate zsh -v
+
+            run ./output/bin/python3-setup setup -v
+
+            export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+            run pip3 install meson
+
+
+           #run ./output/bin/python3-setup upgrade-self

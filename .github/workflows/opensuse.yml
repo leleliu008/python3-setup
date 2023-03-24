@@ -1,0 +1,54 @@
+name: openSUSE
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  opensuse:
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: ['tumbleweed', 'leap:15.4']
+
+    runs-on: ubuntu-latest
+
+    container: opensuse/${{ matrix.flavor }}
+
+    steps:
+      - run: zypper update  -y
+      - run: zypper install -y git cmake ninja gcc pkg-config libcurl-devel openssl-devel libarchive-devel libyaml-devel zlib-devel
+
+      - uses: actions/checkout@main
+
+      - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ./output/bin/python3-setup upgrade-self

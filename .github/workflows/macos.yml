@@ -1,0 +1,263 @@
+name: macos
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+
+  brew:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-11, macos-12]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@main
+
+      - run:  brew update
+      - run:  brew install --overwrite python@3.10 python@3.11
+      - run:  brew install cmake ninja pkg-config curl libyaml libarchive
+
+      - run: sed -i '.bak' '/Requires.private:/d' "$(brew --prefix libarchive)/lib/pkgconfig/libarchive.pc"
+
+      - run:  |
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
+          CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
+          CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
+
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON \
+              -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
+              -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH"
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ./output/bin/python3-setup upgrade-self
+
+
+  vcpkg:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [macos-11, macos-12]
+
+    runs-on: ${{ matrix.version }}
+
+    steps:
+      - run:  brew update
+      - run:  brew install cmake ninja pkg-config
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - run:  cd vcpkg && ./bootstrap-vcpkg.sh
+
+      - run:  cd vcpkg && ./vcpkg install curl openssl libarchive libyaml
+
+      - run:  |
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ./output/bin/python3-setup upgrade-self
+
+
+  vcpkg-sanitizer:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [macos-11, macos-12]
+
+    runs-on: ${{ matrix.version }}
+
+    steps:
+      - run:  brew update
+      - run:  brew install --overwrite python@3.10 python@3.11
+      - run:  brew install cmake ninja llvm pkg-config
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - run:  cd vcpkg && ./bootstrap-vcpkg.sh
+
+      - run:  cd vcpkg && ./vcpkg install curl openssl libarchive libyaml
+
+      - run:  |
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang \
+              -DCMAKE_C_FLAGS="-fsanitize=undefined -fsanitize=address -fsanitize=leak"
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ./output/bin/python3-setup upgrade-self
+
+
+  brew-sanitizer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-11, macos-12]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@main
+
+      - run:  brew update
+      - run:  brew install --overwrite python@3.10 python@3.11
+      - run:  brew install cmake ninja llvm pkg-config curl libyaml libarchive
+
+      - run: sed -i '.bak' '/Requires.private:/d' "$(brew --prefix libarchive)/lib/pkgconfig/libarchive.pc"
+
+      - run:  |
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
+          CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
+          CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
+
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON \
+              -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
+              -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH" \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang \
+              -DCMAKE_C_FLAGS="-fsanitize=undefined -fsanitize=address -fsanitize=leak"
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/python3-setup
+
+      - run: ./output/bin/python3-setup --help
+      - run: ./output/bin/python3-setup -h
+
+      - run: ./output/bin/python3-setup --version
+      - run: ./output/bin/python3-setup -V
+
+      - run: ./output/bin/python3-setup sysinfo
+
+      - run: ./output/bin/python3-setup env
+
+      - run: ./output/bin/python3-setup show-default-config
+
+      - run: ./output/bin/python3-setup integrate zsh
+      - run: ./output/bin/python3-setup integrate zsh -v
+
+      - run: ./output/bin/python3-setup setup -v
+
+      - run: |
+          export PATH="$HOME/.python3-setup/python3/bin:$PATH"
+          pip3 install meson
+
+       #- run: ./output/bin/python3-setup upgrade-self
