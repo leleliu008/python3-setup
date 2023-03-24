@@ -140,8 +140,3 @@ include_directories("${CMAKE_BINARY_DIR}")
 include(GNUInstallDirs)
 
 install(TARGETS python3-setup RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-install(
-    FILES       "${CMAKE_CURRENT_SOURCE_DIR}/python3-setup-zsh-completion"
-    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/zsh/site-functions"
-    RENAME      _python3-setup
-)
