@@ -228,9 +228,7 @@ jobs:
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/python3-setup.yml
 
           run ./ppkg install python3-setup gh --link-type=static-only --install-lib=static
-          run ./ppkg pack    python3-setup
-
-          ls ~/.ppkg/packed/python3-setup-*.tar.xz > filepath.txt
+          run ./ppkg pack    python3-setup -o .
           EOF
 
           chmod +x run.sh
@@ -238,7 +236,6 @@ jobs:
       # https://github.com/multiarch/qemu-user-static
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - run: docker run -v $PWD:$PWD -w $PWD --name alpine arm64v8/alpine sh run.sh
-      - run: docker cp alpine:$(cat filepath.txt) .
 
       - run: ls
 
@@ -247,8 +244,8 @@ jobs:
           name: python3-setup---linux-aarch64-tar-xz
           path: python3-setup-*-linux-aarch64.tar.xz
 
-  linux-s390x:
-    needs: [check, linux-aarch64]
+  linux-ppc64le:
+    needs: [check, macos]
     if: needs.check.outputs.if-has-new-commit == 'yes'
 
     runs-on: ubuntu-latest
@@ -281,9 +278,58 @@ jobs:
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/python3-setup.yml
 
           run ./ppkg install python3-setup gh --link-type=static-only --install-lib=static
-          run ./ppkg pack    python3-setup
+          run ./ppkg pack    python3-setup -o .
+          EOF
 
-          ls ~/.ppkg/packed/python3-setup-*.tar.xz > filepath.txt
+          chmod +x run.sh
+
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine ppc64le/alpine sh run.sh
+
+      - run: ls
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: python3-setup---linux-ppc64le-tar-xz
+          path: python3-setup-*-linux-ppc64le.tar.xz
+
+
+  linux-s390x:
+    needs: [check, linux-ppc64le]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          cat > run.sh <<EOF
+          set -e
+
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
+
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup --use-system-package-manager
+          run ./ppkg update
+
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/python3-setup.yml
+
+          run ./ppkg install python3-setup gh --link-type=static-only --install-lib=static
+          run ./ppkg pack    python3-setup -o .
           EOF
 
           chmod +x run.sh
@@ -291,7 +337,6 @@ jobs:
       # https://github.com/multiarch/qemu-user-static
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - run: docker run -v $PWD:$PWD -w $PWD --name alpine s390x/alpine sh run.sh
-      - run: docker cp alpine:$(cat filepath.txt) .
 
       - run: ls
 
@@ -386,6 +431,11 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: python3-setup---linux-aarch64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: python3-setup---linux-ppc64le-tar-xz
           path: .
 
       - uses: actions/download-artifact@v3

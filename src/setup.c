@@ -456,8 +456,8 @@ static int python3_setup_install_the_given_package(Package package, const char *
             return PYTHON3_SETUP_ERROR;
         }
 
-        size_t configurePhaseExtraOptionsLength = setupDirLength + 118U;
-        char   configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
+        size_t   configurePhaseExtraOptionsLength = setupDirLength + 118U;
+        char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
         snprintf(configurePhaseExtraOptions, configurePhaseExtraOptionsLength, "--with-system-expat --with-system-ffi --with-openssl=%s --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared", setupDir);
 
         return configurew(gmakePath, gmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
@@ -547,9 +547,9 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     ///////////////////////////////////////////////////////
 
-    size_t   ldFlagsLength = (setupDirLength << 1) + 25U;
+    size_t   ldFlagsLength = (setupDirLength << 1) + 30U;
     char     ldFlags[ldFlagsLength];
-    snprintf(ldFlags, ldFlagsLength, "-L%s -Wl,-rpath,%s/lib", setupDir, setupDir);
+    snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib", setupDir, setupDir);
 
     if (logLevel == Python3SetupLogLevel_very_verbose) {
         strncat(ldFlags, " -Wl,-v", 7);
