@@ -265,7 +265,23 @@ static int setup_perl(const char * gmakePath, size_t gmakePathLength, const char
     return run_cmd(installPhaseCmd, redirectOutput2FD);
 }
 
-static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const char * setupDir, size_t setupDirLength, unsigned int jobs, Python3SetupLogLevel logLevel, int redirectOutput2FD, bool output2Terminal) {
+static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const char * setupDir, size_t setupDirLength, unsigned int jobs, Python3SetupLogLevel logLevel, int redirectOutput2FD, bool output2Terminal, SysInfo sysinfo) {
+    // https://github.com/openssl/openssl/issues/19232
+
+    if (strcmp(sysinfo.kind, "openbsd") == 0) {
+        char * patchPhaseCmd = (char*)"sed -i 's|-Wl,-z,defs||' Configurations/shared-info.pl";
+
+        LOG_RUN_CMD(output2Terminal, logLevel, patchPhaseCmd)
+
+        int ret = run_cmd(patchPhaseCmd, redirectOutput2FD);
+
+        if (ret != PYTHON3_SETUP_OK) {
+            return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     size_t   configurePhaseCmdLength = (setupDirLength << 1) + 73U;
     char     configurePhaseCmd[configurePhaseCmdLength];
     snprintf(configurePhaseCmd, configurePhaseCmdLength, "./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=%s --libdir=%s/lib", setupDir, setupDir);
@@ -386,7 +402,7 @@ typedef struct {
     const char * src_sha;
 } Package;
 
-static int python3_setup_install_the_given_package(Package package, const char * python3SetupDownloadsDir, size_t python3SetupDownloadsDirLength, const char * python3SetupInstallingRootDir, size_t python3SetupInstallingRootDirLength, const char * setupDir, size_t setupDirLength, Python3SetupLogLevel logLevel, unsigned int jobs, struct stat st, const char * cmakePath, size_t cmakePathLength, const char * gmakePath, size_t gmakePathLength, bool output2Terminal, int redirectOutput2FD) {
+static int python3_setup_install_the_given_package(Package package, const char * python3SetupDownloadsDir, size_t python3SetupDownloadsDirLength, const char * python3SetupInstallingRootDir, size_t python3SetupInstallingRootDirLength, const char * setupDir, size_t setupDirLength, Python3SetupLogLevel logLevel, unsigned int jobs, struct stat st, const char * cmakePath, size_t cmakePathLength, const char * gmakePath, size_t gmakePathLength, bool output2Terminal, int redirectOutput2FD, SysInfo sysinfo) {
     size_t   packageInstallingDirLength = python3SetupInstallingRootDirLength + strlen(package.name);
     char     packageInstallingDir[packageInstallingDirLength];
     snprintf(packageInstallingDir, packageInstallingDirLength, "%s/%s", python3SetupInstallingRootDir, package.name);
@@ -434,7 +450,7 @@ static int python3_setup_install_the_given_package(Package package, const char *
     if (strcmp(package.name, "perl") == 0) {
         return setup_perl(gmakePath, gmakePathLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "openssl") == 0) {
-        return setup_openssl(gmakePath, gmakePathLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+        return setup_openssl(gmakePath, gmakePathLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal, sysinfo);
     } else if (strcmp(package.name, "zlib") == 0) {
         return cmakew(cmakePath, cmakePathLength, "", 0U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "libbz2") == 0) {
@@ -456,9 +472,9 @@ static int python3_setup_install_the_given_package(Package package, const char *
             return PYTHON3_SETUP_ERROR;
         }
 
-        size_t   configurePhaseExtraOptionsLength = setupDirLength + 118U;
+        size_t   configurePhaseExtraOptionsLength = setupDirLength + 174U;
         char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
-        snprintf(configurePhaseExtraOptions, configurePhaseExtraOptionsLength, "--with-system-expat --with-system-ffi --with-openssl=%s --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared", setupDir);
+        snprintf(configurePhaseExtraOptions, configurePhaseExtraOptionsLength, "--with-system-expat --with-system-ffi --with-openssl=%s --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-loadable-sqlite-extensions --disable-profiling", setupDir);
 
         return configurew(gmakePath, gmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     }
@@ -849,7 +865,7 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
             fprintf(stderr, "\n%s=>> STEP %d : installing %s%s\n", COLOR_PURPLE, stepN++, package.name, COLOR_OFF);
         }
 
-        ret = python3_setup_install_the_given_package(package, python3SetupDownloadsDir, python3SetupDownloadsDirLength, python3SetupInstallingRootDir, python3SetupInstallingRootDirLength, setupDir, setupDirLength, logLevel, jobs, st, cmakePath, cmakePathLength, gmakePath, gmakePathLength, output2Terminal, redirectOutput2FD);
+        ret = python3_setup_install_the_given_package(package, python3SetupDownloadsDir, python3SetupDownloadsDirLength, python3SetupInstallingRootDir, python3SetupInstallingRootDirLength, setupDir, setupDirLength, logLevel, jobs, st, cmakePath, cmakePathLength, gmakePath, gmakePathLength, output2Terminal, redirectOutput2FD, sysinfo);
 
         if (ret != PYTHON3_SETUP_OK) {
             goto finalize;
