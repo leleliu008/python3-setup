@@ -191,8 +191,8 @@ static int python3_setup_write_receipt(const char * setupDir, size_t setupDirLen
     fprintf(receiptFile, "bin-url-gmake:   %s\n",   (binUrlGmake == NULL) ? "" : binUrlGmake);
     fprintf(receiptFile, "bin-sha-gmake:   %s\n\n", (binShaGmake == NULL) ? "" : binShaGmake);
 
-    fprintf(receiptFile, "src-url-cmake:    %s\n",   config.src_url_cmake);
-    fprintf(receiptFile, "src-sha-cmake:    %s\n\n", config.src_sha_cmake);
+    fprintf(receiptFile, "src-url-cmake:   %s\n",   config.src_url_cmake);
+    fprintf(receiptFile, "src-sha-cmake:   %s\n\n", config.src_sha_cmake);
 
     fprintf(receiptFile, "src-url-perl:    %s\n",   config.src_url_perl);
     fprintf(receiptFile, "src-sha-perl:    %s\n\n", config.src_sha_perl);
