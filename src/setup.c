@@ -269,7 +269,7 @@ static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const c
     // https://github.com/openssl/openssl/issues/19232
 
     if (strcmp(sysinfo.kind, "openbsd") == 0) {
-        char * patchPhaseCmd = (char*)"/usr/bin/sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl";
+        char * patchPhaseCmd = (char*)"/usr/bin/sed -i s/-Wl,-z,defs// Configurations/shared-info.pl";
 
         LOG_RUN_CMD(output2Terminal, logLevel, patchPhaseCmd)
 
