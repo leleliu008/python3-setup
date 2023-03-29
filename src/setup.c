@@ -452,7 +452,15 @@ static int python3_setup_install_the_given_package(Package package, const char *
     } else if (strcmp(package.name, "openssl") == 0) {
         return setup_openssl(gmakePath, gmakePathLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal, sysinfo);
     } else if (strcmp(package.name, "zlib") == 0) {
-        return cmakew(cmakePath, cmakePathLength, "", 0U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+        size_t   setupPkgconfigDirLength = setupDirLength + 14U;
+        char     setupPkgconfigDir[setupPkgconfigDirLength + 1U];
+        snprintf(setupPkgconfigDir,setupPkgconfigDirLength + 1U, "%s/lib/pkgconfig", setupDir);
+
+        size_t   configurePhaseExtraOptionsLength = setupPkgconfigDirLength + 24U;
+        char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength + 1U];
+        snprintf(configurePhaseExtraOptions,configurePhaseExtraOptionsLength + 1U, "-DINSTALL_PKGCONFIG_DIR=%s", setupPkgconfigDir);
+
+        return cmakew(cmakePath, cmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "libbz2") == 0) {
         return cmakew(cmakePath, cmakePathLength, "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON", 48U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "expat") == 0) {
@@ -462,6 +470,27 @@ static int python3_setup_install_the_given_package(Package package, const char *
     } else if (strcmp(package.name, "libffi") == 0) {
         return configurew(gmakePath, gmakePathLength, "--disable-symvers --disable-docs", 32U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "python3") == 0) {
+        //size_t   strLength = (setupIncludeDirLength << 1) + (setupLibDirLength << 1) + 69U;
+        //char     str[strLength + 1U];
+        //snprintf(str,strLength + 1U, "zlib zlibmodule.c -I%s -L%s -l:libz.a\n_bz2 _bz2module.c -I%s -L%s -l:libbz2.a", setupIncludeDir, setupLibDir, setupIncludeDir, setupLibDir);
+
+        int fd = open("Modules/Setup.localxxxx", O_WRONLY | O_CREAT, 0666);
+
+        if (fd < 0) {
+            perror("Modules/Setup.local");
+            return PYTHON3_SETUP_ERROR;
+        }
+
+        if (write(fd, "1", 1) < 0) {
+            perror("Modules/Setup.local");
+            close(fd);
+            return PYTHON3_SETUP_ERROR;
+        }
+
+        close(fd);
+
+        /////////////////////////////////////////////////////////////////////////
+
         if (unsetenv("PYTHONHOME") < 0) {
             perror("unsetenv PYTHONHOME");
             return PYTHON3_SETUP_ERROR;
@@ -471,6 +500,8 @@ static int python3_setup_install_the_given_package(Package package, const char *
             perror("unsetenv PYTHONPATH");
             return PYTHON3_SETUP_ERROR;
         }
+
+        /////////////////////////////////////////////////////////////////////////
 
         size_t   configurePhaseExtraOptionsLength = setupDirLength + 174U;
         char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
@@ -527,11 +558,35 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t setupDirLength = strlen(setupDir);
+    size_t   setupDirLength = strlen(setupDir);
 
-    size_t   setupBinDirLength = setupDirLength + 5U;
-    char     setupBinDir[setupBinDirLength];
-    snprintf(setupBinDir, setupBinDirLength, "%s/bin", setupDir);
+    size_t   setupBinDirLength = setupDirLength + 4U;
+    char     setupBinDir[setupBinDirLength + 1U];
+    snprintf(setupBinDir,setupBinDirLength + 1U, "%s/bin", setupDir);
+
+    size_t   setupLibDirLength = setupDirLength + 4U;
+    char     setupLibDir[setupLibDirLength + 1U];
+    snprintf(setupLibDir,setupLibDirLength + 1U, "%s/lib", setupDir);
+
+    size_t   setupPkgconfigDirLength = setupLibDirLength + 10U;
+    char     setupPkgconfigDir[setupPkgconfigDirLength + 1U];
+    snprintf(setupPkgconfigDir,setupPkgconfigDirLength + 1U, "%s/pkgconfig", setupLibDir);
+
+    size_t   setupIncludeDirLength = setupDirLength + 8U;
+    char     setupIncludeDir[setupIncludeDirLength + 1U];
+    snprintf(setupIncludeDir,setupIncludeDirLength + 1U, "%s/include", setupDir);
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (setenv("PKG_CONFIG_LIBDIR", setupPkgconfigDir, 1) != 0) {
+        perror("PKG_CONFIG_LIBDIR");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    if (setenv("PKG_CONFIG_PATH", setupPkgconfigDir, 1) != 0) {
+        perror("PKG_CONFIG_PATH");
+        return PYTHON3_SETUP_ERROR;
+    }
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -546,18 +601,18 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
     snprintf(newPATH, newPATHLength, "%s:%s", setupBinDir, PATH);
 
     if (setenv("PATH", newPATH, 1) != 0) {
-        perror(NULL);
+        perror("PATH");
         return PYTHON3_SETUP_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t   cppFlagsLength = setupDirLength + 3U;
+    size_t   cppFlagsLength = setupIncludeDirLength + 3U;
     char     cppFlags[cppFlagsLength];
-    snprintf(cppFlags, cppFlagsLength, "-I%s", setupDir);
+    snprintf(cppFlags, cppFlagsLength, "-I%s", setupIncludeDir);
 
     if (setenv("CPPFLAGS", cppFlags, 1) != 0) {
-        perror(NULL);
+        perror("CPPFLAGS");
         return PYTHON3_SETUP_ERROR;
     }
 
@@ -572,7 +627,7 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
     }
 
     if (setenv("LDFLAGS", ldFlags, 1) != 0) {
-        perror(NULL);
+        perror("LDFLAGS");
         return PYTHON3_SETUP_ERROR;
     }
 
@@ -580,20 +635,52 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     if (logLevel == Python3SetupLogLevel_very_verbose) {
         if (setenv("CFLAGS", "-fPIC -v", 1) != 0) {
-            perror(NULL);
+            perror("CFLAGS");
             return PYTHON3_SETUP_ERROR;
         }
     } else {
         if (setenv("CFLAGS", "-fPIC", 1) != 0) {
-            perror(NULL);
+            perror("CFLAGS");
             return PYTHON3_SETUP_ERROR;
         }
     }
 
     //////////////////////////////////////////////////////////////////////////////
 
+    if (setenv("ZLIB_CFLAGS", cppFlags, 1) != 0) {
+        perror("ZLIB_CFLAGS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    size_t   ldFlagsForLibzLength = setupLibDirLength + 7U;
+    char     ldFlagsForLibz[ldFlagsForLibzLength];
+    snprintf(ldFlagsForLibz, ldFlagsForLibzLength, "-L%s -lz", setupLibDir);
+
+    if (setenv("ZLIB_LIBS", ldFlagsForLibz, 1) != 0) {
+        perror("ZLIB_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (setenv("BZIP2_CFLAGS", cppFlags, 1) != 0) {
+        perror("BZIP2_CFLAGS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    size_t   ldFlagsForLibbz2Length = setupLibDirLength + 10U;
+    char     ldFlagsForLibbz2[ldFlagsForLibbz2Length];
+    snprintf(ldFlagsForLibbz2, ldFlagsForLibbz2Length, "-L%s -lbz2", setupLibDir);
+
+    if (setenv("BZIP2_LIBS", ldFlagsForLibbz2, 1) != 0) {
+        perror("BZIP2_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     if (setenv("CMAKE_GENERATOR", "Unix Makefiles", 1) != 0) {
-        perror(NULL);
+        perror("CMAKE_GENERATOR");
         return PYTHON3_SETUP_ERROR;
     }
 
@@ -889,10 +976,10 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (rm_r(python3SetupInstallingRootDir, logLevel >= Python3SetupLogLevel_verbose) != 0) {
-        perror(python3SetupInstallingRootDir);
-        ret = PYTHON3_SETUP_ERROR;
-    }
+    //if (rm_r(python3SetupInstallingRootDir, logLevel >= Python3SetupLogLevel_verbose) != 0) {
+    //    perror(python3SetupInstallingRootDir);
+    //    ret = PYTHON3_SETUP_ERROR;
+    //}
 
 finalize:
     if (gmakePathNeedsToBeFreed) {
