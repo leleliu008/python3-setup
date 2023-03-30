@@ -194,6 +194,7 @@ jobs:
           name: python3-setup---macos${{ matrix.target-version }}-${{ matrix.target-arch }}-tar-xz
           path: python3-setup-*-macos*.tar.xz
 
+
   linux-aarch64:
     needs: [check, macos]
     if: needs.check.outputs.if-has-new-commit == 'yes'
@@ -244,8 +245,9 @@ jobs:
           name: python3-setup---linux-aarch64-tar-xz
           path: python3-setup-*-linux-aarch64.tar.xz
 
+
   linux-ppc64le:
-    needs: [check, macos]
+    needs: [check, linux-aarch64]
     if: needs.check.outputs.if-has-new-commit == 'yes'
 
     runs-on: ubuntu-latest

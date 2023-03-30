@@ -21,8 +21,14 @@ int python3_setup_show_default_config() {
     printf("src-url-expat:   %s\n",   DEFAULT_SRC_URL_EXPAT);
     printf("src-sha-expat:   %s\n\n", DEFAULT_SRC_SHA_EXPAT);
 
+    printf("src-url-gdbm:    %s\n",   DEFAULT_SRC_URL_GDBM);
+    printf("src-sha-gdbm:    %s\n\n", DEFAULT_SRC_SHA_GDBM);
+
     printf("src-url-zlib:    %s\n",   DEFAULT_SRC_URL_ZLIB);
     printf("src-sha-zlib:    %s\n\n", DEFAULT_SRC_SHA_ZLIB);
+
+    printf("src-url-xz:      %s\n",   DEFAULT_SRC_URL_XZ);
+    printf("src-sha-xz:      %s\n\n", DEFAULT_SRC_SHA_XZ);
 
     printf("src-url-perl:    %s\n",   DEFAULT_SRC_URL_PERL);
     printf("src-sha-perl:    %s\n\n", DEFAULT_SRC_SHA_PERL);

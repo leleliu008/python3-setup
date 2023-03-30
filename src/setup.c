@@ -269,11 +269,17 @@ static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const c
     // https://github.com/openssl/openssl/issues/19232
 
     if (strcmp(sysinfo.kind, "openbsd") == 0) {
-        char * patchPhaseCmd = (char*)"/usr/bin/sed -i s/-Wl,-z,defs// Configurations/shared-info.pl";
+        const char * patchPhaseCmd = "/usr/bin/sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl";
+
+        size_t  patchPhaseCmdCopyLength = strlen(patchPhaseCmd);
+        char    patchPhaseCmdCopy[patchPhaseCmdCopyLength + 1U];
+        strncpy(patchPhaseCmdCopy, patchPhaseCmd, patchPhaseCmdCopyLength);
+
+        patchPhaseCmdCopy[patchPhaseCmdCopyLength] = '\0';
 
         LOG_RUN_CMD(output2Terminal, logLevel, patchPhaseCmd)
 
-        int ret = run_cmd(patchPhaseCmd, redirectOutput2FD);
+        int ret = run_cmd(patchPhaseCmdCopy, redirectOutput2FD);
 
         if (ret != PYTHON3_SETUP_OK) {
             return ret;
@@ -319,6 +325,50 @@ static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const c
     return run_cmd(installPhaseCmd, redirectOutput2FD);
 }
 
+static int setup_liblzma(const char * gmakePath, size_t gmakePathLength, const char * setupDir, size_t setupDirLength, unsigned int jobs, Python3SetupLogLevel logLevel, int redirectOutput2FD, bool output2Terminal) {
+    size_t   configurePhaseCmdLength = setupDirLength + 38U;
+    char     configurePhaseCmd[configurePhaseCmdLength];
+    snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s --enable-static %s", setupDir, (logLevel == Python3SetupLogLevel_silent) ? "--silent" : "");
+
+    LOG_RUN_CMD(output2Terminal, logLevel, configurePhaseCmd)
+
+    int ret = run_cmd(configurePhaseCmd, redirectOutput2FD);
+
+    if (ret != PYTHON3_SETUP_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (chdir("src/liblzma") != 0) {
+        perror("src/liblzma");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t   buildPhaseCmdLength = gmakePathLength + 12U;
+    char     buildPhaseCmd[buildPhaseCmdLength];
+    snprintf(buildPhaseCmd, buildPhaseCmdLength, "%s --jobs=%u", gmakePath, jobs);
+
+    LOG_RUN_CMD(output2Terminal, logLevel, buildPhaseCmd)
+
+    ret = run_cmd(buildPhaseCmd, redirectOutput2FD);
+
+    if (ret != PYTHON3_SETUP_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t   installPhaseCmdLength = gmakePathLength + 20U;
+    char     installPhaseCmd[installPhaseCmdLength];
+    snprintf(installPhaseCmd, installPhaseCmdLength, "%s install", gmakePath);
+
+    LOG_RUN_CMD(output2Terminal, logLevel, installPhaseCmd)
+
+    return run_cmd(installPhaseCmd, redirectOutput2FD);
+}
 
 static int cmakew(const char * cmakePath, size_t cmakePathLength, const char * configurePhaseExtraOptions, size_t configurePhaseExtraOptionsLength, const char * setupDir, size_t setupDirLength, unsigned int jobs, Python3SetupLogLevel logLevel, int redirectOutput2FD, bool output2Terminal) {
     size_t   configurePhaseCmdLength = cmakePathLength + setupDirLength + configurePhaseExtraOptionsLength + 124U;
@@ -461,10 +511,14 @@ static int python3_setup_install_the_given_package(Package package, const char *
         snprintf(configurePhaseExtraOptions,configurePhaseExtraOptionsLength + 1U, "-DINSTALL_PKGCONFIG_DIR=%s", setupPkgconfigDir);
 
         return cmakew(cmakePath, cmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+    } else if (strcmp(package.name, "xz") == 0) {
+        return setup_liblzma(gmakePath, gmakePathLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "libbz2") == 0) {
         return cmakew(cmakePath, cmakePathLength, "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON", 48U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "expat") == 0) {
         return cmakew(cmakePath, cmakePathLength, "-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF", 123U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+    } else if (strcmp(package.name, "gdbm") == 0) {
+        return configurew(gmakePath, gmakePathLength, "--without-readline", 18U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "sqlite") == 0) {
         return configurew(gmakePath, gmakePathLength, "--disable-editline --disable-readline", 37U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "libffi") == 0) {
@@ -647,6 +701,22 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     //////////////////////////////////////////////////////////////////////////////
 
+    if (setenv("GDBM_CFLAGS", cppFlags, 1) != 0) {
+        perror("GDBM_CFLAGS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    size_t   ldFlagsForGDBMLength = setupLibDirLength + 10U;
+    char     ldFlagsForGDBM[ldFlagsForGDBMLength];
+    snprintf(ldFlagsForGDBM, ldFlagsForGDBMLength, "-L%s -lgdbm", setupLibDir);
+
+    if (setenv("GDBM_LIBS", ldFlagsForGDBM, 1) != 0) {
+        perror("GDBM_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     if (setenv("ZLIB_CFLAGS", cppFlags, 1) != 0) {
         perror("ZLIB_CFLAGS");
         return PYTHON3_SETUP_ERROR;
@@ -674,6 +744,45 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     if (setenv("BZIP2_LIBS", ldFlagsForLibbz2, 1) != 0) {
         perror("BZIP2_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (setenv("LIBLZMA_CFLAGS", cppFlags, 1) != 0) {
+        perror("LIBLZMA_CFLAGS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    size_t   ldFlagsForLIBLZMALength = setupLibDirLength + 10U;
+    char     ldFlagsForLIBLZMA[ldFlagsForLIBLZMALength];
+    snprintf(ldFlagsForLIBLZMA, ldFlagsForLIBLZMALength, "-L%s -llzma", setupLibDir);
+
+    if (setenv("LIBLZMA_LIBS", ldFlagsForLIBLZMA, 1) != 0) {
+        perror("LIBLZMA_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (setenv("LIBSQLITE3_CFLAGS", cppFlags, 1) != 0) {
+        perror("LIBSQLITE3_CFLAGS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    size_t   ldFlagsForLIBSQLITE3Length = setupLibDirLength + 13U;
+    char     ldFlagsForLIBSQLITE3[ldFlagsForLIBSQLITE3Length];
+    snprintf(ldFlagsForLIBSQLITE3, ldFlagsForLIBSQLITE3Length, "-L%s -lsqlite3", setupLibDir);
+
+    if (setenv("LIBSQLITE3_LIBS", ldFlagsForLIBSQLITE3, 1) != 0) {
+        perror("LIBSQLITE3_LIBS");
+        return PYTHON3_SETUP_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (setenv("CMAKE_GENERATOR", "Unix Makefiles", 1) != 0) {
+        perror("CMAKE_GENERATOR");
         return PYTHON3_SETUP_ERROR;
     }
 
@@ -934,18 +1043,20 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
  
     //////////////////////////////////////////////////////////////////////////////
 
-    Package packages[8];
+    Package packages[10];
 
     packages[0] = (Package){ "perl",    config.src_url_perl,    config.src_sha_perl    };
     packages[1] = (Package){ "openssl", config.src_url_openssl, config.src_sha_openssl };
     packages[2] = (Package){ "zlib",    config.src_url_zlib,    config.src_sha_zlib    };
     packages[3] = (Package){ "libbz2",  config.src_url_libbz2,  config.src_sha_libbz2  };
-    packages[4] = (Package){ "expat",   config.src_url_expat,   config.src_sha_expat   };
-    packages[5] = (Package){ "sqlite",  config.src_url_sqlite,  config.src_sha_sqlite  };
-    packages[6] = (Package){ "libffi",  config.src_url_libffi,  config.src_sha_libffi  };
-    packages[7] = (Package){ "python3", config.src_url_python3, config.src_sha_python3 };
+    packages[4] = (Package){ "xz",      config.src_url_xz,      config.src_sha_xz      };
+    packages[5] = (Package){ "gdbm",    config.src_url_gdbm,    config.src_sha_gdbm    };
+    packages[6] = (Package){ "expat",   config.src_url_expat,   config.src_sha_expat   };
+    packages[7] = (Package){ "sqlite",  config.src_url_sqlite,  config.src_sha_sqlite  };
+    packages[8] = (Package){ "libffi",  config.src_url_libffi,  config.src_sha_libffi  };
+    packages[9] = (Package){ "python3", config.src_url_python3, config.src_sha_python3 };
 
-    for (unsigned int i = 0U; i < 8U; i++) {
+    for (unsigned int i = 0U; i < 10U; i++) {
         Package package = packages[i];
 
         if (logLevel != Python3SetupLogLevel_silent) { \
@@ -1027,8 +1138,14 @@ int python3_setup_setup(const char * configFilePath, const char * setupDir, Pyth
     config.src_url_expat = DEFAULT_SRC_URL_EXPAT;
     config.src_sha_expat = DEFAULT_SRC_SHA_EXPAT;
 
+    config.src_url_gdbm = DEFAULT_SRC_URL_GDBM;
+    config.src_sha_gdbm = DEFAULT_SRC_SHA_GDBM;
+
     config.src_url_zlib = DEFAULT_SRC_URL_ZLIB;
     config.src_sha_zlib = DEFAULT_SRC_SHA_ZLIB;
+
+    config.src_url_xz = DEFAULT_SRC_URL_XZ;
+    config.src_sha_xz = DEFAULT_SRC_SHA_XZ;
 
     config.src_url_perl = DEFAULT_SRC_URL_PERL;
     config.src_sha_perl = DEFAULT_SRC_SHA_PERL;
@@ -1092,6 +1209,14 @@ int python3_setup_setup(const char * configFilePath, const char * setupDir, Pyth
             config.src_sha_expat = userSpecifiedConfig->src_sha_expat;
         }
 
+        if (userSpecifiedConfig->src_url_gdbm != NULL) {
+            config.src_url_gdbm = userSpecifiedConfig->src_url_gdbm;
+        }
+
+        if (userSpecifiedConfig->src_sha_gdbm != NULL) {
+            config.src_sha_gdbm = userSpecifiedConfig->src_sha_gdbm;
+        }
+
         if (userSpecifiedConfig->src_url_libbz2 != NULL) {
             config.src_url_libbz2 = userSpecifiedConfig->src_url_libbz2;
         }
@@ -1106,6 +1231,14 @@ int python3_setup_setup(const char * configFilePath, const char * setupDir, Pyth
 
         if (userSpecifiedConfig->src_sha_zlib != NULL) {
             config.src_sha_zlib = userSpecifiedConfig->src_sha_zlib;
+        }
+
+        if (userSpecifiedConfig->src_url_xz != NULL) {
+            config.src_url_xz = userSpecifiedConfig->src_url_xz;
+        }
+
+        if (userSpecifiedConfig->src_sha_xz != NULL) {
+            config.src_sha_xz = userSpecifiedConfig->src_sha_xz;
         }
     }
 

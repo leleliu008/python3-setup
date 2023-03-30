@@ -37,6 +37,9 @@
 
 ////////////////////////////////////////////////////
 
+#define DEFAULT_SRC_URL_XZ      "https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz"
+#define DEFAULT_SRC_SHA_XZ      "5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31"
+
 #define DEFAULT_SRC_URL_ZLIB    "https://zlib.net/zlib-1.2.13.tar.gz"
 #define DEFAULT_SRC_SHA_ZLIB    "b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30"
 
@@ -52,6 +55,9 @@
 #define DEFAULT_SRC_URL_EXPAT   "https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz"
 #define DEFAULT_SRC_SHA_EXPAT   "ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe"
  
+#define DEFAULT_SRC_URL_GDBM    "https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz"
+#define DEFAULT_SRC_SHA_GDBM    "74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd"
+
 #define DEFAULT_SRC_URL_OPENSSL "https://www.openssl.org/source/openssl-3.0.5.tar.gz"
 #define DEFAULT_SRC_SHA_OPENSSL "aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a"
 
@@ -67,6 +73,9 @@
 ////////////////////////////////////////////////////
 
 typedef struct {
+    char * src_url_xz;
+    char * src_sha_xz;
+
     char * src_url_zlib;
     char * src_sha_zlib;
 
@@ -78,6 +87,9 @@ typedef struct {
 
     char * src_url_sqlite;
     char * src_sha_sqlite;
+
+    char * src_url_gdbm;
+    char * src_sha_gdbm;
 
     char * src_url_expat;
     char * src_sha_expat;
