@@ -686,6 +686,26 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     //////////////////////////////////////////////////////////////////////////////
 
+    const char * const LD_LIBRARY_PATH = getenv("LD_LIBRARY_PATH");
+
+    if ((LD_LIBRARY_PATH == NULL) || (strcmp(LD_LIBRARY_PATH, "") == 0)) {
+        if (setenv("LD_LIBRARY_PATH", "/usr/local/lib", 1) != 0) {
+            perror("LD_LIBRARY_PATH");
+            return PYTHON3_SETUP_ERROR;
+        }
+    } else {
+        size_t   newLD_LIBRARY_PATHLength = strlen(LD_LIBRARY_PATH) + 16;
+        char     newLD_LIBRARY_PATH[newLD_LIBRARY_PATHLength];
+        snprintf(newLD_LIBRARY_PATH, newLD_LIBRARY_PATHLength, "/usr/local/lib:%s", LD_LIBRARY_PATH);
+
+        if (setenv("LD_LIBRARY_PATH", newLD_LIBRARY_PATH, 1) != 0) {
+            perror("LD_LIBRARY_PATH");
+            return PYTHON3_SETUP_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     size_t   cppFlagsLength = (setupIncludeDirLength << 1) + 15U;
     char     cppFlags[cppFlagsLength];
     snprintf(cppFlags, cppFlagsLength, "-I%s -I%s/ncursesw", setupIncludeDir, setupIncludeDir);
