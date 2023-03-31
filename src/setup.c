@@ -718,18 +718,18 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
     ///////////////////////////////////////////////////////
 
     if (logLevel == Python3SetupLogLevel_very_verbose) {
-        size_t   ldFlagsLength = (setupDirLength << 1) + 30U;
+        size_t   ldFlagsLength = (setupDirLength << 1) + 56U;
         char     ldFlags[ldFlagsLength];
-        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib -Wl,-v", setupDir, setupDir);
+        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib -Wl,-rpath,/usr/local/lib -Wl,-v", setupDir, setupDir);
 
         if (setenv("LDFLAGS", ldFlags, 1) != 0) {
             perror("LDFLAGS");
             return PYTHON3_SETUP_ERROR;
         }
     } else {
-        size_t   ldFlagsLength = (setupDirLength << 1) + 23U;
+        size_t   ldFlagsLength = (setupDirLength << 1) + 49U;
         char     ldFlags[ldFlagsLength];
-        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib", setupDir, setupDir);
+        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib -Wl,-rpath,/usr/local/lib", setupDir, setupDir);
 
         if (setenv("LDFLAGS", ldFlags, 1) != 0) {
             perror("LDFLAGS");
