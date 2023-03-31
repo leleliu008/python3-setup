@@ -61,6 +61,12 @@
 #define DEFAULT_SRC_URL_OPENSSL "https://www.openssl.org/source/openssl-3.0.5.tar.gz"
 #define DEFAULT_SRC_SHA_OPENSSL "aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a"
 
+#define DEFAULT_SRC_URL_NCURSES "https://ftp.gnu.org/gnu/ncurses/ncurses-6.3.tar.gz"
+#define DEFAULT_SRC_SHA_NCURSES "97fc51ac2b085d4cde31ef4d2c3122c21abc217e9090a43a30fc5ec21684e059"
+
+#define DEFAULT_SRC_URL_READLINE "https://ftp.gnu.org/gnu/readline/readline-8.1.2.tar.gz"
+#define DEFAULT_SRC_SHA_READLINE "7589a2381a8419e68654a47623ce7dfcb756815c8fee726b98f90bf668af7bc6"
+
 #define DEFAULT_SRC_URL_PYTHON3 "https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz"
 #define DEFAULT_SRC_SHA_PYTHON3  "2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849"
  
@@ -96,6 +102,12 @@ typedef struct {
 
     char * src_url_openssl;
     char * src_sha_openssl;
+
+    char * src_url_ncurses;
+    char * src_sha_ncurses;
+
+    char * src_url_readline;
+    char * src_sha_readline;
 
     char * src_url_python3;
     char * src_sha_python3;

@@ -65,7 +65,7 @@ static int run_cmd(char * cmd, int redirectOutput2FD) {
         ////////////////////////////////////////
 
         size_t argc = 0U;
-        char*  argv[20] = {0};
+        char*  argv[30] = {0};
 
         char * arg = strtok(cmd, " ");
 
@@ -200,6 +200,12 @@ static int python3_setup_write_receipt(const char * setupDir, size_t setupDirLen
     fprintf(receiptFile, "src-url-python3: %s\n",   config.src_url_python3);
     fprintf(receiptFile, "src-sha-python3: %s\n\n", config.src_sha_python3);
 
+    fprintf(receiptFile, "src-url-readline: %s\n",   config.src_url_readline);
+    fprintf(receiptFile, "src-sha-readline: %s\n\n", config.src_sha_readline);
+
+    fprintf(receiptFile, "src-url-ncurses: %s\n",   config.src_url_ncurses);
+    fprintf(receiptFile, "src-sha-ncurses: %s\n\n", config.src_sha_ncurses);
+
     fprintf(receiptFile, "src-url-openssl: %s\n",   config.src_url_openssl);
     fprintf(receiptFile, "src-sha-openssl: %s\n\n", config.src_sha_openssl);
 
@@ -214,6 +220,9 @@ static int python3_setup_write_receipt(const char * setupDir, size_t setupDirLen
 
     fprintf(receiptFile, "src-url-expat:   %s\n",   config.src_url_expat);
     fprintf(receiptFile, "src-sha-expat:   %s\n\n", config.src_sha_expat);
+
+    fprintf(receiptFile, "src-url-gdbm:    %s\n",   config.src_url_gdbm);
+    fprintf(receiptFile, "src-sha-gdbm:    %s\n\n", config.src_sha_gdbm);
 
     fprintf(receiptFile, "src-url-zlib:    %s\n",   config.src_url_zlib);
     fprintf(receiptFile, "src-sha-zlib:    %s\n\n", config.src_sha_zlib);
@@ -269,7 +278,7 @@ static int setup_openssl(const char * gmakePath, size_t gmakePathLength, const c
     // https://github.com/openssl/openssl/issues/19232
 
     if (strcmp(sysinfo.kind, "openbsd") == 0) {
-        const char * patchPhaseCmd = "/usr/bin/sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl";
+        const char * patchPhaseCmd = "/usr/bin/sed -i s/-Wl,-z,defs// Configurations/shared-info.pl";
 
         size_t  patchPhaseCmdCopyLength = strlen(patchPhaseCmd);
         char    patchPhaseCmdCopy[patchPhaseCmdCopyLength + 1U];
@@ -518,11 +527,27 @@ static int python3_setup_install_the_given_package(Package package, const char *
     } else if (strcmp(package.name, "expat") == 0) {
         return cmakew(cmakePath, cmakePathLength, "-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF", 123U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "gdbm") == 0) {
-        return configurew(gmakePath, gmakePathLength, "--without-readline", 18U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+        return configurew(gmakePath, gmakePathLength, "--enable-libgdbm-compat --without-readline", 42U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "sqlite") == 0) {
         return configurew(gmakePath, gmakePathLength, "--disable-editline --disable-readline", 37U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "libffi") == 0) {
         return configurew(gmakePath, gmakePathLength, "--disable-symvers --disable-docs", 32U, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+    } else if (strcmp(package.name, "ncurses") == 0) {
+        size_t   setupPkgconfigDirLength = setupDirLength + 14U;
+        char     setupPkgconfigDir[setupPkgconfigDirLength + 1U];
+        snprintf(setupPkgconfigDir,setupPkgconfigDirLength + 1U, "%s/lib/pkgconfig", setupDir);
+
+        size_t   configurePhaseExtraOptionsLength = setupPkgconfigDirLength + setupDirLength + 380U;
+        char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
+        snprintf(configurePhaseExtraOptions, configurePhaseExtraOptionsLength, "--enable-const --enable-widec --enable-termcap --enable-warnings --enable-pc-files --enable-ext-mouse --enable-ext-colors --disable-stripping --disable-assertions --disable-gnat-projects --disable-echo --without-tests --without-debug --without-valgrind --without-ada --with-pkg-config-libdir=%s --with-terminfo-dirs=%s/share/terminfo:/etc/terminfo:/lib/terminfo:/usr/share/terminfo", setupPkgconfigDir, setupDir);
+
+        return configurew(gmakePath, gmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
+    } else if (strcmp(package.name, "readline") == 0) {
+        size_t   configurePhaseExtraOptionsLength = setupDirLength + 34U;
+        char     configurePhaseExtraOptions[configurePhaseExtraOptionsLength];
+        snprintf(configurePhaseExtraOptions, configurePhaseExtraOptionsLength, "--enable-multibyte --with-curses=%s", setupDir);
+
+        return configurew(gmakePath, gmakePathLength, configurePhaseExtraOptions, configurePhaseExtraOptionsLength, setupDir, setupDirLength, jobs, logLevel, redirectOutput2FD, output2Terminal);
     } else if (strcmp(package.name, "python3") == 0) {
         //size_t   strLength = (setupIncludeDirLength << 1) + (setupLibDirLength << 1) + 69U;
         //char     str[strLength + 1U];
@@ -661,9 +686,9 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t   cppFlagsLength = setupIncludeDirLength + 3U;
+    size_t   cppFlagsLength = (setupIncludeDirLength << 1) + 15U;
     char     cppFlags[cppFlagsLength];
-    snprintf(cppFlags, cppFlagsLength, "-I%s", setupIncludeDir);
+    snprintf(cppFlags, cppFlagsLength, "-I%s -I%s/ncursesw", setupIncludeDir, setupIncludeDir);
 
     if (setenv("CPPFLAGS", cppFlags, 1) != 0) {
         perror("CPPFLAGS");
@@ -672,17 +697,24 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
 
     ///////////////////////////////////////////////////////
 
-    size_t   ldFlagsLength = (setupDirLength << 1) + 30U;
-    char     ldFlags[ldFlagsLength];
-    snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib", setupDir, setupDir);
-
     if (logLevel == Python3SetupLogLevel_very_verbose) {
-        strncat(ldFlags, " -Wl,-v", 7);
-    }
+        size_t   ldFlagsLength = (setupDirLength << 1) + 30U;
+        char     ldFlags[ldFlagsLength];
+        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib -Wl,-v", setupDir, setupDir);
 
-    if (setenv("LDFLAGS", ldFlags, 1) != 0) {
-        perror("LDFLAGS");
-        return PYTHON3_SETUP_ERROR;
+        if (setenv("LDFLAGS", ldFlags, 1) != 0) {
+            perror("LDFLAGS");
+            return PYTHON3_SETUP_ERROR;
+        }
+    } else {
+        size_t   ldFlagsLength = (setupDirLength << 1) + 23U;
+        char     ldFlags[ldFlagsLength];
+        snprintf(ldFlags, ldFlagsLength, "-L%s/lib -Wl,-rpath,%s/lib", setupDir, setupDir);
+
+        if (setenv("LDFLAGS", ldFlags, 1) != 0) {
+            perror("LDFLAGS");
+            return PYTHON3_SETUP_ERROR;
+        }
     }
 
     ///////////////////////////////////////////////////////
@@ -770,9 +802,9 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
         return PYTHON3_SETUP_ERROR;
     }
 
-    size_t   ldFlagsForLIBSQLITE3Length = setupLibDirLength + 13U;
+    size_t   ldFlagsForLIBSQLITE3Length = setupLibDirLength + 19U;
     char     ldFlagsForLIBSQLITE3[ldFlagsForLIBSQLITE3Length];
-    snprintf(ldFlagsForLIBSQLITE3, ldFlagsForLIBSQLITE3Length, "-L%s -lsqlite3", setupLibDir);
+    snprintf(ldFlagsForLIBSQLITE3, ldFlagsForLIBSQLITE3Length, "-L%s -l:libsqlite3.a", setupLibDir);
 
     if (setenv("LIBSQLITE3_LIBS", ldFlagsForLIBSQLITE3, 1) != 0) {
         perror("LIBSQLITE3_LIBS");
@@ -1043,7 +1075,7 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
  
     //////////////////////////////////////////////////////////////////////////////
 
-    Package packages[10];
+    Package packages[12];
 
     packages[0] = (Package){ "perl",    config.src_url_perl,    config.src_sha_perl    };
     packages[1] = (Package){ "openssl", config.src_url_openssl, config.src_sha_openssl };
@@ -1054,9 +1086,11 @@ static int python3_setup_setup_internal(const char * setupDir, Python3SetupConfi
     packages[6] = (Package){ "expat",   config.src_url_expat,   config.src_sha_expat   };
     packages[7] = (Package){ "sqlite",  config.src_url_sqlite,  config.src_sha_sqlite  };
     packages[8] = (Package){ "libffi",  config.src_url_libffi,  config.src_sha_libffi  };
-    packages[9] = (Package){ "python3", config.src_url_python3, config.src_sha_python3 };
+    packages[9] = (Package){ "ncurses",  config.src_url_ncurses,  config.src_sha_ncurses  };
+    packages[10] = (Package){ "readline",  config.src_url_readline,  config.src_sha_readline  };
+    packages[11] = (Package){ "python3", config.src_url_python3, config.src_sha_python3 };
 
-    for (unsigned int i = 0U; i < 10U; i++) {
+    for (unsigned int i = 0U; i < 12U; i++) {
         Package package = packages[i];
 
         if (logLevel != Python3SetupLogLevel_silent) { \
@@ -1123,6 +1157,12 @@ int python3_setup_setup(const char * configFilePath, const char * setupDir, Pyth
     config.src_url_python3 = DEFAULT_SRC_URL_PYTHON3;
     config.src_sha_python3 = DEFAULT_SRC_SHA_PYTHON3;
 
+    config.src_url_readline = DEFAULT_SRC_URL_READLINE;
+    config.src_sha_readline = DEFAULT_SRC_SHA_READLINE;
+
+    config.src_url_ncurses = DEFAULT_SRC_URL_NCURSES;
+    config.src_sha_ncurses = DEFAULT_SRC_SHA_NCURSES;
+
     config.src_url_openssl = DEFAULT_SRC_URL_OPENSSL;
     config.src_sha_openssl = DEFAULT_SRC_SHA_OPENSSL;
 
@@ -1168,7 +1208,23 @@ int python3_setup_setup(const char * configFilePath, const char * setupDir, Pyth
         if (userSpecifiedConfig->src_sha_python3 != NULL) {
             config.src_sha_python3 = userSpecifiedConfig->src_sha_python3;
         }
+  
+        if (userSpecifiedConfig->src_url_readline != NULL) {
+            config.src_url_readline = userSpecifiedConfig->src_url_readline;
+        }
+
+        if (userSpecifiedConfig->src_sha_readline != NULL) {
+            config.src_sha_readline = userSpecifiedConfig->src_sha_readline;
+        }
  
+        if (userSpecifiedConfig->src_url_ncurses != NULL) {
+            config.src_url_ncurses = userSpecifiedConfig->src_url_ncurses;
+        }
+
+        if (userSpecifiedConfig->src_sha_ncurses != NULL) {
+            config.src_sha_ncurses = userSpecifiedConfig->src_sha_ncurses;
+        }
+
         if (userSpecifiedConfig->src_url_openssl != NULL) {
             config.src_url_openssl = userSpecifiedConfig->src_url_openssl;
         }

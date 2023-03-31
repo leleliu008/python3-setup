@@ -6,6 +6,12 @@ int python3_setup_show_default_config() {
     printf("src-url-python3: %s\n",   DEFAULT_SRC_URL_PYTHON3);
     printf("src-sha-python3: %s\n\n", DEFAULT_SRC_SHA_PYTHON3);
 
+    printf("src-url-readline: %s\n",   DEFAULT_SRC_URL_READLINE);
+    printf("src-sha-readline: %s\n\n", DEFAULT_SRC_SHA_READLINE);
+
+    printf("src-url-ncurses: %s\n",   DEFAULT_SRC_URL_NCURSES);
+    printf("src-sha-ncurses: %s\n\n", DEFAULT_SRC_SHA_NCURSES);
+
     printf("src-url-openssl: %s\n",   DEFAULT_SRC_URL_OPENSSL);
     printf("src-sha-openssl: %s\n\n", DEFAULT_SRC_SHA_OPENSSL);
 
